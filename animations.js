@@ -174,7 +174,7 @@ function drawLightning() {
 
 function drawSun() {
     if (!sun) return;
-    
+
     // Glowing effect
     ctx.beginPath();
     ctx.arc(sun.x, sun.y, sun.radius + sun.glow * Math.abs(Math.sin(sun.angle)), 0, Math.PI * 2);
