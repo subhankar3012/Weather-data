@@ -701,93 +701,59 @@ function updateWetGlass() {
 }
 
 // ─── AI SMART SUGGESTIONS ───────────────────────────────────
-function generateSmartSuggestions(data, aqiValue, forecastData) {
-    const suggestions = [];
-    const cityName = data.name || 'this area';
-    const temp = data.main.temp;
-    const feelsLike = data.main.feels_like;
-    const weather = data.weather[0].main.toLowerCase();
-    const wind = data.wind.speed;
-    const humidity = data.main.humidity;
-    const hour = Atmosphere.localHour;
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 20 ? 'evening' : 'tonight';
-
-    // Priority 1: Severe weather
-    if (weather === 'thunderstorm') {
-        suggestions.push({ icon: '⛈️', text: `Thunderstorm active in ${cityName}. Stay indoors and avoid open areas.`, priority: 1, type: 'severe' });
-    }
-    if (wind > 15) {
-        suggestions.push({ icon: '🌪️', text: `Very strong winds (${(wind * 3.6).toFixed(0)} km/h). Secure loose objects.`, priority: 1, type: 'severe' });
-    }
-
-    // Priority 2: AQI warnings
-    if (aqiValue > 200) {
-        suggestions.push({ icon: '😷', text: `Hazardous air quality (AQI ${aqiValue}). Wear N95 mask outdoors.`, priority: 2, type: 'warning' });
-    } else if (aqiValue > 150) {
-        suggestions.push({ icon: '🫁', text: `Unhealthy air quality detected (AQI ${aqiValue}). Limit outdoor activity.`, priority: 2, type: 'warning' });
-    }
-
-    // Priority 3: Rain/umbrella
-    if (weather === 'rain' || weather === 'drizzle') {
-        suggestions.push({ icon: '☂️', text: `Carry an umbrella in ${cityName} this ${timeOfDay}.`, priority: 3, type: 'info' });
-    }
-    if (weather === 'snow') {
-        suggestions.push({ icon: '🧥', text: `Snowfall in ${cityName}. Bundle up and drive carefully.`, priority: 3, type: 'info' });
-    }
-
-    // Priority 4: Temperature
-    if (temp > 40) {
-        suggestions.push({ icon: '🥵', text: `Extreme heat (${temp.toFixed(0)}°C). Stay hydrated, avoid direct sun.`, priority: 1, type: 'severe' });
-    } else if (temp > 35) {
-        suggestions.push({ icon: '☀️', text: `Very hot (${temp.toFixed(0)}°C). Stay hydrated and seek shade.`, priority: 4, type: 'info' });
-    } else if (temp < 0) {
-        suggestions.push({ icon: '🥶', text: `Freezing temperature (${temp.toFixed(0)}°C). Dress in warm layers.`, priority: 4, type: 'info' });
-    } else if (temp < 5) {
-        suggestions.push({ icon: '🧊', text: `Very cold this ${timeOfDay}. Watch for ice on roads.`, priority: 4, type: 'info' });
-    }
-
-    // Feels-like difference
-    if (Math.abs(feelsLike - temp) > 5) {
-        const direction = feelsLike < temp ? 'colder' : 'warmer';
-        suggestions.push({ icon: '🌡️', text: `Feels ${direction} than actual (${feelsLike.toFixed(0)}°C vs ${temp.toFixed(0)}°C) due to wind chill.`, priority: 5, type: 'tip' });
-    }
-
-    // Priority 5: Humidity/mist
-    if (humidity > 85 && weather !== 'rain') {
-        suggestions.push({ icon: '💧', text: `High humidity (${humidity}%). May feel muggy this ${timeOfDay}.`, priority: 5, type: 'tip' });
-    }
-    if (weather === 'fog' || weather === 'mist') {
-        suggestions.push({ icon: '🌫️', text: `Low visibility. Drive with care and use fog lights.`, priority: 3, type: 'info' });
-    }
-
-    // Sort by priority, take top 3
-    suggestions.sort((a, b) => a.priority - b.priority);
-    return suggestions.slice(0, 3);
-}
-
-function renderSuggestions(suggestions) {
+function updateAISuggestions(tempC) {
     const container = document.getElementById('ai-suggestions');
     if (!container) return;
-    if (suggestions.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    container.style.display = 'block';
 
-    const typeColors = {
-        severe: 'border-rose-500/40 bg-rose-500/10',
-        warning: 'border-amber-500/40 bg-amber-500/10',
-        info: 'border-sky-500/40 bg-sky-500/10',
-        tip: 'border-accent-400/30 bg-accent-500/5',
+    function getTheme(t) {
+        if (t < -10) return { bg: 'bg-indigo-500/15', border: 'border-indigo-500/40', text: 'text-indigo-200' };
+        if (t < -5) return { bg: 'bg-violet-500/15', border: 'border-violet-500/40', text: 'text-violet-200' };
+        if (t < 0) return { bg: 'bg-blue-500/15', border: 'border-blue-500/40', text: 'text-blue-200' };
+        if (t < 5) return { bg: 'bg-sky-500/15', border: 'border-sky-500/40', text: 'text-sky-200' };
+        if (t < 10) return { bg: 'bg-cyan-500/15', border: 'border-cyan-500/40', text: 'text-cyan-200' };
+        if (t < 15) return { bg: 'bg-teal-500/15', border: 'border-teal-500/40', text: 'text-teal-200' };
+        if (t < 20) return { bg: 'bg-emerald-500/15', border: 'border-emerald-500/40', text: 'text-emerald-200' };
+        if (t < 25) return { bg: 'bg-green-500/15', border: 'border-green-500/40', text: 'text-green-200' };
+        if (t < 30) return { bg: 'bg-lime-500/15', border: 'border-lime-500/40', text: 'text-lime-200' };
+        if (t < 35) return { bg: 'bg-yellow-500/15', border: 'border-yellow-500/40', text: 'text-yellow-200' };
+        if (t < 40) return { bg: 'bg-amber-500/15', border: 'border-amber-500/40', text: 'text-amber-200' };
+        if (t < 45) return { bg: 'bg-red-500/15', border: 'border-red-500/40', text: 'text-red-200' };
+        return { bg: 'bg-rose-600/20', border: 'border-rose-500/50', text: 'text-rose-200' };
+    }
+
+    const theme = getTheme(tempC);
+
+    const dataset = {
+        "ranges": [
+            { "min": -100, "max": 10, "title": "❄️ FREEZE MODE", "messages": ["🧊 You’re not cold… you’re just a human popsicle waiting for 2035.", "🥶 Outside feels like your ex — cold, heartless, and personally out to get you.", "🛌 Your blanket isn’t a life partner anymore… it’s your only friend who hasn’t ghosted you."] },
+            { "min": 10, "max": 15, "title": "🌫️ CHILL WARNING", "messages": ["😶🌫️ Not freezing, just cold enough to make you question every life choice since birth.", "🧥 Jacket on, personality still in the laundry.", "☕ Perfect weather to pretend you’re productive while doing absolutely nothing. Congrats, champ."] },
+            { "min": 15, "max": 20, "title": "😌 PERFECT BUT DANGEROUS", "messages": ["🚶 Weather so nice even your overthinking gets jealous.", "🎧 Main character vibes… too bad the script is still “loser in hoodie.”", "🌿 Nature is healing. You’re still broken, but at least the trees feel sorry for you."] },
+            { "min": 20, "max": 25, "title": "😎 COMFORT ZONE", "messages": ["🌞 Nothing to complain about… which is suspicious as hell.", "🛋️ You could be productive… but let’s be honest, your best self is still buffering.", "🧃 Even the weather is in a better mood than your dad jokes."] },
+            { "min": 25, "max": 30, "title": "🌞 WARM-UP ROUND", "messages": ["😅 You’re sweating like a politician caught in a lie, but still saying “I’m fine bro.”", "🧴 Sunscreen isn’t optional anymore — it’s your last line of defense against looking like a boiled lobster.", "☀️ The sun is gently roasting you… just like your family at dinner."] },
+            { "min": 30, "max": 35, "title": "🔥 HEAT INCOMING", "messages": ["🥵 Step outside and instantly regret every decision that led you to this moment.", "☀️ This isn’t heat… it’s the sun sending you a strongly worded warning letter.", "😏 Sweat has entered the chat… and it brought its whole family."] },
+            { "min": 35, "max": 40, "title": "💀 SURVIVAL MODE", "messages": ["🔥 The sun didn’t come to shine… it came to collect your soul in monthly installments.", "🍳 You’re not walking, you’re slow-cooking. Medium-rare human, extra pathetic.", "🧃 Drink water like your life depends on it… because at this point, your personality already evaporated."] },
+            { "min": 40, "max": 45, "title": "☠️ EXTREME HEAT", "messages": ["🔥 Even the wind feels like it owes you money and is here to take it with interest.", "💀 Stepping outside is no longer a choice… it’s assisted suicide with extra humidity.", "🥵 You’re not sweating anymore — you’re just leaking motivation and self-respect."] },
+            { "min": 45, "max": 100, "title": "🔥 HELL MODE", "messages": ["☀️ Congratulations, you didn’t go outside… you entered the devil’s sauna.", "🫠 You’re not sweating. You’re melting faster than your will to live on a Monday morning.", "☠️ Hydrate or evaporate. At this temperature, even your excuses are too hot to handle.", "💀 Survival tip: Stay inside. Your room AC is the only thing that still loves you."] }
+        ]
     };
 
-    container.innerHTML = suggestions.map(s => {
-        const colorClass = typeColors[s.type] || typeColors.tip;
-        return `<div class="flex items-start gap-3 p-3 rounded-xl border-l-4 ${colorClass} mb-2" style="animation: fadeInUp 0.6s ease both;">
-            <span class="text-xl flex-shrink-0">${s.icon}</span>
-            <span class="text-sm leading-relaxed">${s.text}</span>
-        </div>`;
-    }).join('');
+    const matchedRange = dataset.ranges.find(r => tempC >= r.min && tempC < r.max) || dataset.ranges[3];
+    const randomMsg = matchedRange.messages[Math.floor(Math.random() * matchedRange.messages.length)];
+
+    container.innerHTML = `
+        <div class="glass flex flex-col md:flex-row items-stretch md:items-center gap-2 p-2.5 rounded-xl shadow-lg border border-white/5" style="background:rgba(255,255,255,0.03); backdrop-filter: blur(10px);">
+            <!-- Title Box (Fixed Orange Theme) -->
+            <div class="bg-orange-500/15 border border-orange-500/40 text-orange-400 px-3 py-2 rounded-lg text-xs font-display font-bold uppercase tracking-wide flex items-center justify-center text-center shadow-sm flex-shrink-0 md:w-auto w-full">
+                ${matchedRange.title}
+            </div>
+            
+            <!-- Suggestion Text Box (Dynamic Theme) -->
+            <div class="${theme.bg} border ${theme.border} ${theme.text} px-4 py-2 rounded-lg text-xs md:text-[13px] font-medium flex-1 shadow-sm flex items-center leading-relaxed text-center md:text-left">
+                ${randomMsg}
+            </div>
+        </div>
+    `;
+    container.style.display = 'block';
 }
 
 // ─── TEMPERATURE COUNTER ANIMATION ──────────────────────────
@@ -855,8 +821,7 @@ function updateAtmosphere(data) {
     });
 
     // Generate AI suggestions
-    const suggestions = generateSmartSuggestions(data, Atmosphere.aqiValue);
-    renderSuggestions(suggestions);
+    updateAISuggestions(data.main.temp);
 
     console.log(
         `[Atmosphere] TZ: ${Atmosphere.timezoneOffset}s | Hour: ${Atmosphere.localHour.toFixed(1)} | ` +
@@ -871,10 +836,9 @@ function updateAtmosphere(data) {
  */
 function updateAtmosphereAQI(aqiValue) {
     Atmosphere.aqiValue = aqiValue;
-    // Regenerate suggestions with updated AQI
+    // Regenerate suggestions if needed (currently AI suggests based on temp, not AQI)
     if (window._lastWeatherData) {
-        const suggestions = generateSmartSuggestions(window._lastWeatherData, aqiValue);
-        renderSuggestions(suggestions);
+        updateAISuggestions(window._lastWeatherData.main.temp);
     }
 }
 
